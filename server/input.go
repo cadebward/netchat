@@ -1,4 +1,4 @@
-package input
+package server
 
 import (
 	"bufio"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func ReadInput(conn net.Conn) (string, error) {
+func readInput(conn net.Conn) (string, error) {
 	input, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		return "", err

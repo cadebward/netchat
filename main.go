@@ -1,25 +1,25 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"os"
 
-	s "github.com/cadebward/netchat/server"
+	"github.com/cadebward/netchat/server"
 )
 
-type Configuration struct {
-	Network string
-	Port    string
-	Logfile string
-}
-
-func readConfig() (Configuration, error) {
-	file, _ := os.Open("config.json")
+func readConfig() (server.Configuration, error) {
+	file, err := os.Open("config.json")
+	if err != nil {
+		return server.Configuration{}, err
+	}
 	defer file.Close()
-	decoder := json.NewDecoder(file)
-	config := Configuration{}
-	decoder.Decode(&config)
+	config := server.Configuration{}
+	err = json.NewDecoder(file).Decode(&config)
+	if err != nil {
+		return server.Configuration{}, err
+	}
 	return config, nil
 }
 
@@ -28,6 +28,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	server := s.NewServer(config.Network, config.Port, config.Logfile)
-	server.Run()
+	s := server.NewServer(config)
+	ctx := context.Background()
+	s.Run(ctx)
 }

@@ -2,13 +2,11 @@ package server
 
 import (
 	"net"
-
-	"github.com/cadebward/netchat/input"
 )
 
 func readUsername(conn net.Conn) (string, error) {
 	conn.Write([]byte("What is your username? "))
-	username, err := input.ReadInput(conn)
+	username, err := readInput(conn)
 	if err != nil {
 		return "", err
 	}
