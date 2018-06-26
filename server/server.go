@@ -44,11 +44,12 @@ func (s *Server) Run(ctx context.Context) error {
 	log.SetOutput(write)
 
 	// start listening
-	ln, err := net.Listen(s.Network, ":"+s.Port)
+	ln, err := net.Listen(s.Network, s.Port)
 	if err != nil {
 		log.Panic(err)
 	}
 	log.Println(s.Network, "network listening on port", s.Port)
+	// handle all incoming connections
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -59,13 +60,22 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 }
 
+func readUsername(conn net.Conn) (string, error) {
+	conn.Write([]byte("What is your username? "))
+	username, err := readInput(conn)
+	if err != nil {
+		return "", err
+	}
+	return username, nil
+}
+
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
-	// func handleConnection(conn net.Conn) {
 	username, err := readUsername(conn)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// setup a new client and broadcast to all current clients
 	client := NewClient(conn, username)
 	s.mu.Lock()
 	s.Clients = append(s.Clients, client)
@@ -80,10 +90,12 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 		Time:     time.Now(),
 		Err:      nil,
 		Username: "system",
-		Body:     "Welcome to netchat! Feel free to type away. Press Enter when you want to send.",
+		Body:     "Welcome to netchat! Press Enter when you want to send.",
 	})
 	childCtx, cancelFunc := context.WithCancel(ctx)
 	defer cancelFunc()
+
+	// listen for any messages sent by each client
 	go client.Listen(ctx)
 	for {
 		select {
@@ -91,9 +103,17 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 			return
 		case message := <-client.Data:
 			if message.Err != nil {
+				// client has diconnected, remove connection and announce to clients
 				client.Close()
+				s.broadcast(Message{
+					Time:     time.Now(),
+					Err:      nil,
+					Username: "system",
+					Body:     client.Username + " has disconnected.",
+				})
 				return
 			}
+			// client has sent a message, broadcast to all clients
 			s.broadcast(message)
 		}
 	}

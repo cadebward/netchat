@@ -34,7 +34,8 @@ func NewClient(conn net.Conn, username string) *Client {
 }
 
 func (c *Client) Close() {
-	log.Println("connection closed", c.Username)
+	// close out the connection and set a flag so our goroutine will stop
+	log.Println(c.Username, " has disconnected")
 	c.isClosed = true
 	c.Conn.Close()
 }
@@ -52,13 +53,14 @@ func (c *Client) Listen(ctx context.Context) {
 			Err:      err,
 			Username: c.Username,
 		}
-		// TODO impl rooms
 	}
 }
 
 func (c *Client) Send(message Message) (int, error) {
 	formatted := formatMessage(message)
 	if c.Username == message.Username {
+		// removes the chat message and replaces it with the newly formatted version
+		// of the chat message when the client is the one who sent the message
 		resetCursor := "\033[1A\033[K"
 		return c.Conn.Write([]byte(resetCursor + formatted))
 	} else {
